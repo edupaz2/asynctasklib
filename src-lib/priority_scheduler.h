@@ -1,8 +1,7 @@
 #ifndef _PRIORITY_SCHEDULER_H_
 #define _PRIORITY_SCHEDULER_H_
 
-// Based on the Boost Library example
-// priority.cpp
+// Based on the Boost Fiber Library example
 // https://www.boost.org/doc/libs/1_69_0/libs/fiber/examples/priority.cpp
 
 #include <chrono>
