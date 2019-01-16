@@ -3,6 +3,7 @@
 #include <sstream>
 
 #include "asynctasklib_defs.h"
+#include "asynctasklib.h"
 
 void printCommands()
 {
@@ -78,31 +79,33 @@ int main(int argc, char* argv[]) {
 	    {
 	    	if(inputCmd[0] == "start")
             {
-                printCommandOutput(0, inputCmd[0]);
+                printCommandOutput(startTask(), inputCmd[0]);
                 continue;
             }
             else if(inputCmd[0] == "pause")
             {
-                printCommandOutput(0, inputCmd[0]);
+                printCommandOutput(pauseTask(getTaskId(inputCmd[1])), inputCmd[0]);
                 continue;
             }
             else if(inputCmd[0] == "resume")
             {
-                printCommandOutput(0, inputCmd[0]);
+                printCommandOutput(resumeTask(getTaskId(inputCmd[1])), inputCmd[0]);
                 continue;
             }
             else if(inputCmd[0] == "stop")
             {
-                printCommandOutput(0, inputCmd[0]);
+                printCommandOutput(stopTask(getTaskId(inputCmd[1])), inputCmd[0]);
                 continue;
             }
             else if(inputCmd[0] == "status")
             {
+                printStatus(status());
                 continue;
             }
             else if(inputCmd[0] == "quit")
             {
                 std::cout << "QUIT" << std::endl;
+                quit();
                 goto quit;
             }
             else
