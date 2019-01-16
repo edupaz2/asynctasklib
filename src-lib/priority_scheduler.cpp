@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>                // std::find_if()
 
+//#define _VERBOSE
 #ifdef _VERBOSE
 class Verbose {
 public:

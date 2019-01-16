@@ -38,7 +38,7 @@ void Processor::init()
             task_id tsk;
             while (boost::fibers::channel_op_status::closed != this->m_taskPool->pop(tsk))
             {
-                std::string taskname = std::to_string(m_taskCounter);
+                std::string taskname = std::to_string(tsk);
                 std::cout << "Thread poping task " << taskname << std::endl;
                 boost::fibers::fiber {
                     launch(yield_fn, taskname, 1)
