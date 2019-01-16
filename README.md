@@ -1,2 +1,2 @@
 # asynctasklib
-Asynchronous Task Library
+Asynchronous Task Library in C++ and Boost
