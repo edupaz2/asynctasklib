@@ -84,29 +84,44 @@ int main(int argc, char* argv[]) {
             }
             else if(inputCmd[0] == "pause")
             {
-                printCommandOutput(pauseTask(getTaskId(inputCmd[1])), inputCmd[0]);
-                continue;
+                if(cmd_count == 2)
+                {
+                    printCommandOutput(pauseTask(getTaskId(inputCmd[1])), inputCmd[0]);
+                    continue;
+                }
             }
             else if(inputCmd[0] == "resume")
             {
-                printCommandOutput(resumeTask(getTaskId(inputCmd[1])), inputCmd[0]);
-                continue;
+                if(cmd_count == 2)
+                {
+                    printCommandOutput(resumeTask(getTaskId(inputCmd[1])), inputCmd[0]);
+                    continue;
+                }
             }
             else if(inputCmd[0] == "stop")
             {
-                printCommandOutput(stopTask(getTaskId(inputCmd[1])), inputCmd[0]);
-                continue;
+                if(cmd_count == 2)
+                {
+                    printCommandOutput(stopTask(getTaskId(inputCmd[1])), inputCmd[0]);
+                    continue;
+                }
             }
             else if(inputCmd[0] == "status")
             {
-                printStatus(status());
-                continue;
+                if(cmd_count == 1)
+                {
+                    printStatus(status());
+                    continue;
+                }
             }
             else if(inputCmd[0] == "quit")
             {
-                std::cout << "QUIT" << std::endl;
-                quit();
-                goto quit;
+                if(cmd_count == 1)
+                {
+                    std::cout << "QUIT" << std::endl;
+                    quit();
+                    goto quit;
+                }
             }
             else
             {
