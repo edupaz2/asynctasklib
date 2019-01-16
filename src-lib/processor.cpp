@@ -1,6 +1,8 @@
 #include "processor.h"
 #include <iostream>
 
+#include "priority_scheduler.h"
+
 Processor::~Processor()
 {
 	std::cout << "~Processor" << std::endl;
@@ -8,6 +10,8 @@ Processor::~Processor()
 
 void Processor::init()
 {
+    // make sure we use our priority_scheduler rather than default round_robin
+    boost::fibers::use_scheduling_algorithm< PriorityScheduler >();
 }
 
 task_id Processor::startTask()
