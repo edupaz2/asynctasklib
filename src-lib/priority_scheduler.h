@@ -9,6 +9,8 @@
 #include <mutex>
 #include <boost/fiber/all.hpp>
 
+#include "asynctasklib_defs.h"
+
 class PriorityProps : public boost::fibers::fiber_properties {
 public:
     PriorityProps(boost::fibers::context * ctx);
@@ -20,6 +22,7 @@ public:
     void set_to_stop();
 
     std::string name;
+    task_id tid = 0;
 
 private:
     int m_priority = 0;

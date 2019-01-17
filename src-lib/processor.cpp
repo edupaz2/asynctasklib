@@ -25,14 +25,15 @@ private:
 };
 #endif
 
-std::map<task_id, task_status>  taskStatusMap;
-std::map<task_id, PriorityProps*>           taskPropsMap;
+std::map<task_id, task_status>      taskStatusMap;
+std::map<task_id, PriorityProps*>   taskPropsMap;
 
 template< typename Fn >
 boost::fibers::fiber launch(Fn && func, std::string const& name, ChannelTask tsk) {
     boost::fibers::fiber fiber(func);
     PriorityProps & props(fiber.properties< PriorityProps >() );
     props.name = name;
+    props.tid = tsk.id;
     props.set_priority(tsk.priority);// Running
 
     taskPropsMap[tsk.id] = &props;
@@ -49,10 +50,14 @@ void yield_fn()
     // and it will leave a trace
     Verbose v("---> yield_fn I'm outta here", "stop\n");
 #endif
-    while(!props.is_set_to_stop()) {
+    const int iterations = 50;
+    for(int i = 0; i < iterations && !props.is_set_to_stop(); ++i)
+    {
         //std::cout << "fiber " << name << " yielding" << std::endl;
+        boost::this_fiber::sleep_for(std::chrono::seconds(1));
         boost::this_fiber::yield();
     }
+    taskStatusMap[props.tid] = task_status::completed;
 }
 
 Processor::~Processor()
@@ -104,7 +109,7 @@ void Processor::quit()
 
 task_id Processor::startTask()
 {
-    const ChannelTask ct(m_taskCounter, 5);
+    const ChannelTask ct(m_taskCounter, 0);
     taskStatusMap[m_taskCounter] = task_status::running;
     m_taskPool->push(ct);
 	return m_taskCounter++;
@@ -112,7 +117,7 @@ task_id Processor::startTask()
 
 task_id Processor::startTask(const task_type& type)
 {
-    const ChannelTask ct(m_taskCounter, 5);
+    const ChannelTask ct(m_taskCounter, 0);
     taskStatusMap[m_taskCounter] = task_status::running;
     m_taskPool->push(ct);
 	return m_taskCounter++;
@@ -143,7 +148,7 @@ task_id Processor::resumeTask(const task_id& id)
         if(taskStatusMap[id] == task_status::paused)
         {
             std::cout << "Resume [" << search->first << "]" << std::endl;
-            search->second->set_priority(5);
+            search->second->set_priority(0);
             taskStatusMap[id] = task_status::running;
 
             return id;
