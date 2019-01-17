@@ -10,7 +10,7 @@ task_id			pauseTask	(const task_id& id);
 task_id			resumeTask	(const task_id& id);
 task_id			stopTask	(const task_id& id);
 
-task_status		status 		();
+task_status_v	status 		();
 
 void			quit		();
 

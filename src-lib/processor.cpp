@@ -25,8 +25,8 @@ private:
 };
 #endif
 
-std::map<task_id, STaskStatus::status>  taskStatusMap;
-std::map<task_id, PriorityProps*>       taskPropsMap;
+std::map<task_id, TaskStatus::task_status>  taskStatusMap;
+std::map<task_id, PriorityProps*>           taskPropsMap;
 
 template< typename Fn >
 boost::fibers::fiber launch(Fn && func, std::string const& name, ChannelTask tsk) {
@@ -35,7 +35,7 @@ boost::fibers::fiber launch(Fn && func, std::string const& name, ChannelTask tsk
     props.name = name;
     props.set_priority(tsk.priority);// Running
 
-    taskStatusMap[tsk.id] =  STaskStatus::status::running;
+    taskStatusMap[tsk.id] =  TaskStatus::task_status::running;
     taskPropsMap[tsk.id] = &props;
 
     return fiber;
@@ -75,7 +75,7 @@ void Processor::init()
             while (boost::fibers::channel_op_status::closed != this->m_taskPool->pop(tsk))
             {
                 std::string taskname = std::to_string(tsk.id);
-                std::cout << "Thread poping task " << taskname << std::endl;
+                //std::cout << "Thread poping task " << taskname << std::endl;
                 boost::fibers::fiber {
                     launch(yield_fn, taskname, tsk)
                 }.detach();
@@ -122,11 +122,11 @@ task_id Processor::pauseTask(const task_id& id)
     auto search = taskPropsMap.find(id);
     if(search != taskPropsMap.end())
     {
-        if(taskStatusMap[id] == STaskStatus::status::running)
+        if(taskStatusMap[id] == TaskStatus::task_status::running)
         {
             std::cout << "Pause [" << search->first << "]" << std::endl;
             search->second->set_priority(-1);
-            taskStatusMap[id] =  STaskStatus::status::paused;
+            taskStatusMap[id] =  TaskStatus::task_status::paused;
 
             return id;
         }
@@ -139,11 +139,11 @@ task_id Processor::resumeTask(const task_id& id)
     auto search = taskPropsMap.find(id);
     if(search != taskPropsMap.end())
     {
-        if(taskStatusMap[id] == STaskStatus::status::paused)
+        if(taskStatusMap[id] == TaskStatus::task_status::paused)
         {
             std::cout << "Resume [" << search->first << "]" << std::endl;
             search->second->set_priority(5);
-            taskStatusMap[id] = STaskStatus::status::running;
+            taskStatusMap[id] = TaskStatus::task_status::running;
 
             return id;
         }
@@ -156,11 +156,11 @@ task_id Processor::stopTask(const task_id& id)
 	auto search = taskPropsMap.find(id);
     if(search != taskPropsMap.end())
     {
-        if(taskStatusMap[id] == STaskStatus::status::paused || taskStatusMap[id] ==  STaskStatus::status::running)
+        if(taskStatusMap[id] == TaskStatus::task_status::paused || taskStatusMap[id] ==  TaskStatus::task_status::running)
         {
             std::cout << "Stop [" << search->first << "]" << std::endl;
             search->second->set_to_stop();
-            taskStatusMap[id] = STaskStatus::status::running;
+            taskStatusMap[id] = TaskStatus::task_status::stopped;
 
             return id;
         }
@@ -168,7 +168,18 @@ task_id Processor::stopTask(const task_id& id)
     return 0;
 }
 
-task_status Processor::status()
+task_status_v Processor::status()
 {
-	return task_status();
+    task_status_v vc;
+    auto it = taskStatusMap.begin();
+    const auto itEnd = taskStatusMap.end();
+    while( it != itEnd )
+    {
+        TaskStatus st;
+        st.id = it->first;
+        st.status = it->second;
+        vc.push_back(st);
+        ++it;
+    }
+	return vc;
 }

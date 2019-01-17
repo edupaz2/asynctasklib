@@ -42,7 +42,7 @@ task_id	stopTask(const task_id& id)
 	return processor->stopTask(id);
 }
 
-task_status	status()
+task_status_v	status()
 {
 	return processor->status();
 }

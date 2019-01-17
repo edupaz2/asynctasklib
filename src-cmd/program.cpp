@@ -20,9 +20,25 @@ void printCommands()
     std::cout << "#-----------------#" << std::endl;
 }
 
-void printStatus(const task_status& status)
+void printStatus(const task_status_v& status)
 {
-	std::cout << "The status is" << std::endl;
+    std::cout << "#-----------------#" << std::endl;
+    if(status.size())
+    {
+    	std::cout << "The status is" << std::endl;
+        auto it = status.begin();
+        auto itEnd = status.end();
+        while(it != itEnd)
+        {
+            std::cout << it->toStr() << std::endl;
+            ++it;
+        }
+    }
+    else
+    {
+        std::cout << "No tasks" << std::endl;
+    }
+    std::cout << "#-----------------#" << std::endl;
 }
 
 void printCommandOutput(task_id id, const std::string& cmd)

@@ -19,7 +19,7 @@ struct ChannelTask
 	task_id id;
 	int 	priority;
 };
-	
+
 class Processor
 {
 public:
@@ -35,7 +35,7 @@ public:
 	task_id			resumeTask	(const task_id& id);
 	task_id			stopTask	(const task_id& id);
 
-	task_status		status 		();
+	task_status_v	status 		();
 
 private:
 	task_id			m_taskCounter;

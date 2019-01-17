@@ -3,8 +3,8 @@
 #include <iostream>
 #include <algorithm>                // std::find_if()
 
-#define _VERBOSE
-#define _VERBOSE_QUEUES
+//#define _VERBOSE
+//#define _VERBOSE_QUEUES
 
 PriorityProps::PriorityProps(boost::fibers::context* ctx):
     fiber_properties(ctx)
@@ -55,7 +55,8 @@ void PriorityScheduler::awakened(boost::fibers::context* ctx, PriorityProps & pr
 #ifdef _VERBOSE_QUEUES
     describe_ready_queue();
     std::cout << std::endl;
-#else
+#endif
+#ifdef _VERBOSE
     std::cout << std::endl;
 #endif
 }
@@ -86,7 +87,8 @@ boost::fibers::context* PriorityScheduler::pick_next() noexcept
 #ifdef _VERBOSE_QUEUES
     describe_ready_queue();
     std::cout << std::endl;
-#else
+#endif
+#ifdef _VERBOSE
     std::cout << std::endl;
 #endif
     return ctx;
@@ -116,7 +118,6 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
         handle the case in which the passed `ctx` is not in
         your ready queue. It might be running, or it might be
         blocked. >*/
-        std::cout << "property_change 1111" << std::endl;
 
 #ifdef _VERBOSE_QUEUES
         // hopefully user will distinguish this case by noticing that
@@ -127,8 +128,6 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
 #endif
         return;
     }
-
-    std::cout << "property_change 2222" << std::endl;
 
     // Found ctx: unlink it
     ctx->ready_unlink();
@@ -168,7 +167,9 @@ void PriorityScheduler::describe_ready_queue()
 
 void PriorityScheduler::suspend_until(std::chrono::steady_clock::time_point const& time_point) noexcept
 {
+#ifdef _VERBOSE_QUEUES
     std::cout << "suspend_until BEGIN" << std::endl;
+#endif
     if ( (std::chrono::steady_clock::time_point::max)() == time_point) {
         std::unique_lock< std::mutex > lk( mtx_);
         cnd_.wait( lk, [this](){ return flag_; });
@@ -178,7 +179,9 @@ void PriorityScheduler::suspend_until(std::chrono::steady_clock::time_point cons
         cnd_.wait_until( lk, time_point, [this](){ return flag_; });
         flag_ = false;
     }
+#ifdef _VERBOSE
     std::cout << "suspend_until END" << std::endl;
+#endif
 }
 
 void PriorityScheduler::notify() noexcept
