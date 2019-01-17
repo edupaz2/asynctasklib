@@ -4,6 +4,7 @@
 #include <algorithm>                // std::find_if()
 
 #define _VERBOSE
+#define _VERBOSE_QUEUES
 #ifdef _VERBOSE
 class Verbose {
 public:
@@ -45,7 +46,8 @@ void PriorityProps::set_priority(int p)
     through an access method. >*/
     // Of course, it's only worth reshuffling the queue and all if we're
     // actually changing the priority.
-    if ( p != priority_) {
+    if ( p != priority_ )
+     {
         priority_ = p;
         notify();
     }
@@ -71,19 +73,15 @@ void PriorityScheduler::awakened(boost::fibers::context* ctx, PriorityProps & pr
     if(ctx_priority < 0)
     {
         // No need to insert in order
-        pmap_[ctx] = ctx_priority;
+        rqueue_t::iterator i( std::find_if( pqueue_.begin(), pqueue_.end(),
+            [ctx_priority,this]( boost::fibers::context & c)
+            { return properties( &c ).get_priority() < ctx_priority; }));
+        // Now, whether or not we found a fiber with lower priority,
+        // insert this new fiber here.
+        pqueue_.insert(i, *ctx);
     }
     else
     {
-        // Check the paused map for the fiber just resumed
-        // TODO: do we need to check them all?
-        pmap_t::iterator ip(pmap_.find(ctx));
-        if(ip != pmap_.end())
-        {
-            // Just remove it. We will insert at ready queue later on
-            pmap_.erase(ip);
-        }
-
         // With this scheduler, fibers with higher priority values are
         // preferred over fibers with lower priority values. But fibers with
         // equal priority values are processed in round-robin fashion. So when
@@ -92,15 +90,19 @@ void PriorityScheduler::awakened(boost::fibers::context* ctx, PriorityProps & pr
         // in the queue with LOWER priority, and insert before that one.
         rqueue_t::iterator i( std::find_if( rqueue_.begin(), rqueue_.end(),
             [ctx_priority,this]( boost::fibers::context & c)
-            { return properties( &c ).get_priority() < ctx_priority; }));
+            { return properties( &c ).get_priority() >= ctx_priority; }));
         // Now, whether or not we found a fiber with lower priority,
         // insert this new fiber here.
         rqueue_.insert(i, *ctx);
     }
 #ifdef _VERBOSE
-    std::cout << "awakened(" << props.name << "-" << ctx_priority << "): ";
+    std::cout << "awakened(" << props.name << "-" << ctx_priority << "-" << ctx->ready_is_linked() << "): ";
+#endif
+#ifdef _VERBOSE_QUEUES
     describe_ready_queue();
-    describe_paused_map();
+    describe_paused_queue();
+    std::cout << std::endl;
+#else
     std::cout << std::endl;
 #endif
 }
@@ -110,6 +112,10 @@ void PriorityScheduler::awakened(boost::fibers::context* ctx, PriorityProps & pr
          of the next fiber to run. >>*/
 boost::fibers::context* PriorityScheduler::pick_next() noexcept
 {
+#ifdef _VERBOSE
+    std::cout << "pick_next() ";
+#endif
+
     // if ready queue is empty, just tell caller
     if ( rqueue_.empty() ) {
         return nullptr;
@@ -124,9 +130,13 @@ boost::fibers::context* PriorityScheduler::pick_next() noexcept
 
     rqueue_.pop_back();
 #ifdef _VERBOSE
-    std::cout << "pick_next() resuming " << properties(ctx).name << ": ";
+    std::cout << " resuming " << properties(ctx).name << ": ";
+#endif
+#ifdef _VERBOSE_QUEUES
     describe_ready_queue();
-    describe_paused_map();
+    describe_paused_queue();
+    std::cout << std::endl;
+#else
     std::cout << std::endl;
 #endif
     return ctx;
@@ -162,12 +172,14 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
         handle the case in which the passed `ctx` is not in
         your ready queue. It might be running, or it might be
         blocked. >*/
-#ifdef _VERBOSE
+
+
+#ifdef _VERBOSE_QUEUES
         // hopefully user will distinguish this case by noticing that
         // the fiber with which we were called does not appear in the
         // ready queue at all
         describe_ready_queue();
-        describe_paused_map();
+        describe_paused_queue();
         std::cout << std::endl;
 #endif
         return;
@@ -179,14 +191,13 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
     // Here we know that ctx was in our ready queue, but we've unlinked
     // it. We happen to have a method that will (re-)add a context* to the
     // right place in the ready queue.
-    awakened( ctx, props);
+    awakened(ctx, props);
 }
 
 
 void PriorityScheduler::describe_ready_queue()
 {
-#ifdef _VERBOSE
-    std::cout << "{ Ready: ";
+    std::cout << "{Ready: ";
     if ( rqueue_.empty() )
     {
         std::cout << "[empty]";
@@ -201,29 +212,22 @@ void PriorityScheduler::describe_ready_queue()
         }
     }
     std::cout << "}";
-#endif
 }
 
-void PriorityScheduler::describe_paused_map()
+void PriorityScheduler::describe_paused_queue()
 {
-#ifdef _VERBOSE
-    std::cout << "{ Paused: ";
-    if ( pmap_.empty() ) {
+    std::cout << "{Paused: ";
+    if ( pqueue_.empty() ) {
         std::cout << "[empty]";
     } else {
         const char * delim = "";
-        pmap_t::iterator it = pmap_.begin();
-        while ( it != pmap_.end() )
-        {
-            boost::fibers::context& ctx = (*it->first);
-            PriorityProps & props( properties(&ctx) );
+        for ( boost::fibers::context & ctx : pqueue_) {
+            PriorityProps & props( properties( & ctx) );
             std::cout << delim << props.name << '(' << props.get_priority() << ')';
             delim = ", ";
-            ++it;
         }
     }
     std::cout << "}";
-#endif
 }
 
 void PriorityScheduler::suspend_until(std::chrono::steady_clock::time_point const& time_point) noexcept

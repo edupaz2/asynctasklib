@@ -31,7 +31,7 @@ private:
     typedef std::map<boost::fibers::context*, int>      pmap_t;
 
     rqueue_t                    rqueue_;// Ready fibers
-    pmap_t                      pmap_;// Paused fibers map
+    rqueue_t                    pqueue_;// Paused fibers
     std::mutex                  mtx_{};
     std::condition_variable     cnd_{};
     bool                        flag_{ false };
@@ -47,7 +47,7 @@ public:
     void notify() noexcept;
 
     void describe_ready_queue();
-    void describe_paused_map();
+    void describe_paused_queue();
 };
 
 #endif

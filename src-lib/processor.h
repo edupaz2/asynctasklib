@@ -12,6 +12,14 @@
 
 #include <boost/fiber/buffered_channel.hpp>
 
+struct ChannelTask
+{
+	ChannelTask() {}
+	ChannelTask(task_id tid, int p) : id(tid), priority(p) {}
+	task_id id;
+	int 	priority;
+};
+	
 class Processor
 {
 public:
@@ -32,7 +40,7 @@ public:
 private:
 	task_id			m_taskCounter;
 
-	typedef boost::fibers::buffered_channel<task_id> Channel;
+	typedef boost::fibers::buffered_channel<ChannelTask> Channel;
 
 	// Worker thread accepting tasks through the buffered channel
 	std::thread* 	m_workerThread;
