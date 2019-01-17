@@ -36,6 +36,7 @@ public:
 	task_id			stopTask	(const task_id& id);
 
 	task_status_v	status 		();
+	task_status_v	status 		(const task_id& id);
 
 private:
 	task_id			m_taskCounter;

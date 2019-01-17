@@ -124,7 +124,12 @@ int main(int argc, char* argv[]) {
             }
             else if(inputCmd[0] == "status")
             {
-                if(cmd_count == 1)
+                if(cmd_count == 2)
+                {
+                    printStatus(status(getTaskId(inputCmd[1])));
+                    continue;
+                }
+                else
                 {
                     printStatus(status());
                     continue;
