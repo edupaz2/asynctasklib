@@ -41,7 +41,7 @@ void Processor::init()
                 std::string taskname = std::to_string(tsk);
                 std::cout << "Thread poping task " << taskname << std::endl;
                 boost::fibers::fiber {
-                    launch(yield_fn, taskname, 1)
+                    launch(yield_fn, taskname, -1)
                 }.detach();
             }
         });

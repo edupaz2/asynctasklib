@@ -3,7 +3,7 @@
 #include <iostream>
 #include <algorithm>                // std::find_if()
 
-//#define _VERBOSE
+#define _VERBOSE
 #ifdef _VERBOSE
 class Verbose {
 public:
@@ -66,21 +66,42 @@ void PriorityScheduler::awakened(boost::fibers::context* ctx, PriorityProps & pr
     int ctx_priority = props.get_priority(); /*< `props` is the instance of
                                                PriorityProps associated
                                                with the passed fiber `ctx`. >*/
-    // With this scheduler, fibers with higher priority values are
-    // preferred over fibers with lower priority values. But fibers with
-    // equal priority values are processed in round-robin fashion. So when
-    // we're handed a new context*, put it at the end of the fibers
-    // with that same priority. In other words: search for the first fiber
-    // in the queue with LOWER priority, and insert before that one.
-    rqueue_t::iterator i( std::find_if( rqueue_.begin(), rqueue_.end(),
-        [ctx_priority,this]( boost::fibers::context & c)
-        { return properties( &c ).get_priority() < ctx_priority; }));
-    // Now, whether or not we found a fiber with lower priority,
-    // insert this new fiber here.
-    rqueue_.insert( i, * ctx);
+
+    // Fibers with priorities below zero are "paused". Do not include them in the ready queue
+    if(ctx_priority < 0)
+    {
+        // No need to insert in order
+        pmap_[ctx] = ctx_priority;
+    }
+    else
+    {
+        // Check the paused map for the fiber just resumed
+        // TODO: do we need to check them all?
+        pmap_t::iterator ip(pmap_.find(ctx));
+        if(ip != pmap_.end())
+        {
+            // Just remove it. We will insert at ready queue later on
+            pmap_.erase(ip);
+        }
+
+        // With this scheduler, fibers with higher priority values are
+        // preferred over fibers with lower priority values. But fibers with
+        // equal priority values are processed in round-robin fashion. So when
+        // we're handed a new context*, put it at the end of the fibers
+        // with that same priority. In other words: search for the first fiber
+        // in the queue with LOWER priority, and insert before that one.
+        rqueue_t::iterator i( std::find_if( rqueue_.begin(), rqueue_.end(),
+            [ctx_priority,this]( boost::fibers::context & c)
+            { return properties( &c ).get_priority() < ctx_priority; }));
+        // Now, whether or not we found a fiber with lower priority,
+        // insert this new fiber here.
+        rqueue_.insert(i, *ctx);
+    }
 #ifdef _VERBOSE
-    std::cout << "awakened(" << props.name << "): ";
+    std::cout << "awakened(" << props.name << "-" << ctx_priority << "): ";
     describe_ready_queue();
+    describe_paused_map();
+    std::cout << std::endl;
 #endif
 }
 
@@ -93,11 +114,20 @@ boost::fibers::context* PriorityScheduler::pick_next() noexcept
     if ( rqueue_.empty() ) {
         return nullptr;
     }
-    boost::fibers::context * ctx( & rqueue_.front() );
-    rqueue_.pop_front();
+    // Traverse the priorities: the higher the number, the higher the priority
+    // Avoid priorities below zero
+    boost::fibers::context* ctx(&rqueue_.back());
+    // Check below zero priorities
+    PriorityProps & props(properties(ctx));
+    if(props.get_priority() < 0)
+        return nullptr;
+
+    rqueue_.pop_back();
 #ifdef _VERBOSE
     std::cout << "pick_next() resuming " << properties(ctx).name << ": ";
     describe_ready_queue();
+    describe_paused_map();
+    std::cout << std::endl;
 #endif
     return ctx;
 }
@@ -137,6 +167,8 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
         // the fiber with which we were called does not appear in the
         // ready queue at all
         describe_ready_queue();
+        describe_paused_map();
+        std::cout << std::endl;
 #endif
         return;
     }
@@ -154,9 +186,13 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
 void PriorityScheduler::describe_ready_queue()
 {
 #ifdef _VERBOSE
-    if ( rqueue_.empty() ) {
+    std::cout << "{ Ready: ";
+    if ( rqueue_.empty() )
+    {
         std::cout << "[empty]";
-    } else {
+    }
+    else
+    {
         const char * delim = "";
         for ( boost::fibers::context & ctx : rqueue_) {
             PriorityProps & props( properties( & ctx) );
@@ -164,7 +200,29 @@ void PriorityScheduler::describe_ready_queue()
             delim = ", ";
         }
     }
-    std::cout << std::endl;
+    std::cout << "}";
+#endif
+}
+
+void PriorityScheduler::describe_paused_map()
+{
+#ifdef _VERBOSE
+    std::cout << "{ Paused: ";
+    if ( pmap_.empty() ) {
+        std::cout << "[empty]";
+    } else {
+        const char * delim = "";
+        pmap_t::iterator it = pmap_.begin();
+        while ( it != pmap_.end() )
+        {
+            boost::fibers::context& ctx = (*it->first);
+            PriorityProps & props( properties(&ctx) );
+            std::cout << delim << props.name << '(' << props.get_priority() << ')';
+            delim = ", ";
+            ++it;
+        }
+    }
+    std::cout << "}";
 #endif
 }
 

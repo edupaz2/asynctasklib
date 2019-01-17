@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <boost/fiber/all.hpp>
+#include <map>
 
 class PriorityProps : public boost::fibers::fiber_properties {
 public:
@@ -26,9 +27,11 @@ private:
 class PriorityScheduler :
     public boost::fibers::algo::algorithm_with_properties< PriorityProps > {
 private:
-    typedef boost::fibers::scheduler::ready_queue_type rqueue_t;
+    typedef boost::fibers::scheduler::ready_queue_type  rqueue_t;
+    typedef std::map<boost::fibers::context*, int>      pmap_t;
 
-    rqueue_t                    rqueue_;
+    rqueue_t                    rqueue_;// Ready fibers
+    pmap_t                      pmap_;// Paused fibers map
     std::mutex                  mtx_{};
     std::condition_variable     cnd_{};
     bool                        flag_{ false };
@@ -40,9 +43,11 @@ public:
     virtual boost::fibers::context* pick_next() noexcept;
     virtual bool has_ready_fibers() const noexcept;
     virtual void property_change(boost::fibers::context* ctx, PriorityProps & props) noexcept;
-    void describe_ready_queue();
     void suspend_until(std::chrono::steady_clock::time_point const& time_point) noexcept;
     void notify() noexcept;
+
+    void describe_ready_queue();
+    void describe_paused_map();
 };
 
 #endif
