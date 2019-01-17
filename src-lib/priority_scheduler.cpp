@@ -5,37 +5,10 @@
 
 #define _VERBOSE
 #define _VERBOSE_QUEUES
-#ifdef _VERBOSE
-class Verbose {
-public:
-    Verbose( std::string const& d, std::string const& s="stop") :
-        desc( d),
-        stop( s) {
-        std::cout << desc << " start" << std::endl;
-    }
-
-    ~Verbose() {
-        std::cout << desc << ' ' << stop << std::endl;
-    }
-
-    Verbose( Verbose const&) = delete;
-    Verbose & operator=( Verbose const&) = delete;
-
-private:
-    std::string     desc;
-    std::string     stop;
-};
-#endif
 
 PriorityProps::PriorityProps(boost::fibers::context* ctx):
-    fiber_properties(ctx),
-    priority_(0)
+    fiber_properties(ctx)
 {}
-
-int PriorityProps::get_priority() const
-{
-    return priority_; /*< Provide read access methods at your own discretion. >*/
-}
 
 void PriorityProps::set_priority(int p)
 { /*<
@@ -46,11 +19,17 @@ void PriorityProps::set_priority(int p)
     through an access method. >*/
     // Of course, it's only worth reshuffling the queue and all if we're
     // actually changing the priority.
-    if ( p != priority_ )
+    if ( p != m_priority )
      {
-        priority_ = p;
+        m_priority = p;
         notify();
     }
+}
+
+void PriorityProps::set_to_stop()
+{
+    m_stop = true;
+    notify();
 }
 
 // 
@@ -58,16 +37,12 @@ PriorityScheduler::PriorityScheduler() :
     rqueue_()
 {}
 
-    // For a subclass of algorithm_with_properties<>, it's important to
-    // override the correct awakened() overload.
-    /*<< You must override the [member_link algorithm_with_properties..awakened]
-         method. This is how your scheduler receives notification of a
-         fiber that has become ready to run. >>*/
 void PriorityScheduler::awakened(boost::fibers::context* ctx, PriorityProps & props) noexcept
 {
     int ctx_priority = props.get_priority(); /*< `props` is the instance of
                                                PriorityProps associated
                                                with the passed fiber `ctx`. >*/
+
     rqueue_t::iterator i( std::find_if( rqueue_.begin(), rqueue_.end(),
             [ctx_priority,this]( boost::fibers::context & c)
             { return properties( &c ).get_priority() >= ctx_priority; }));
@@ -85,9 +60,6 @@ void PriorityScheduler::awakened(boost::fibers::context* ctx, PriorityProps & pr
 #endif
 }
 
-    /*<< You must override the [member_link algorithm_with_properties..pick_next]
-         method. This is how your scheduler actually advises the fiber manager
-         of the next fiber to run. >>*/
 boost::fibers::context* PriorityScheduler::pick_next() noexcept
 {
 #ifdef _VERBOSE
@@ -98,6 +70,7 @@ boost::fibers::context* PriorityScheduler::pick_next() noexcept
     if ( rqueue_.empty() ) {
         return nullptr;
     }
+
     // Traverse the priorities: the higher the number, the higher the priority
     // Avoid priorities below zero
     boost::fibers::context* ctx(&rqueue_.back());
@@ -119,17 +92,11 @@ boost::fibers::context* PriorityScheduler::pick_next() noexcept
     return ctx;
 }
 
-/*<< You must override [member_link algorithm_with_properties..has_ready_fibers]
-to inform the fiber manager of the state of your ready queue. >>*/
 bool PriorityScheduler::has_ready_fibers() const noexcept
 {
     return ! rqueue_.empty();
 }
 
-/*<< Overriding [member_link algorithm_with_properties..property_change]
-     is optional. This override handles the case in which the running
-     fiber changes the priority of another ready fiber: a fiber already in
-     our queue. In that case, move the updated fiber within the queue. >>*/
 void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityProps & props) noexcept
 {
     // Although our PriorityProps class defines multiple properties, only
@@ -166,6 +133,11 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
     // Found ctx: unlink it
     ctx->ready_unlink();
 
+    if(props.is_set_to_stop())
+    {
+        //ctx->terminate(); // TODO This is not working here.
+    }
+
     // Here we know that ctx was in our ready queue, but we've unlinked
     // it. We happen to have a method that will (re-)add a context* to the
     // right place in the ready queue.
@@ -177,7 +149,7 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
 
 void PriorityScheduler::describe_ready_queue()
 {
-    std::cout << "{Ready: ";
+    std::cout << "{Queue: ";
     if ( rqueue_.empty() )
     {
         std::cout << "[empty]";

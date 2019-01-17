@@ -13,14 +13,17 @@ class PriorityProps : public boost::fibers::fiber_properties {
 public:
     PriorityProps(boost::fibers::context * ctx);
 
-    int get_priority() const;
-
+    int get_priority() const { return m_priority; }
     void set_priority(int p);
+
+    bool is_set_to_stop() const { return m_stop; }
+    void set_to_stop();
 
     std::string name;
 
 private:
-    int priority_;
+    int m_priority = 0;
+    bool m_stop = false;
 };
 
 class PriorityScheduler :

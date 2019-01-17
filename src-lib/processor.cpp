@@ -3,12 +3,34 @@
 
 #include "priority_scheduler.h"
 
+#ifdef _VERBOSE
+class Verbose {
+public:
+    Verbose( std::string const& d, std::string const& s="stop") :
+        desc( d),
+        stop( s) {
+        std::cout << desc << " start" << std::endl;
+    }
+
+    ~Verbose() {
+        std::cout << desc << ' ' << stop << std::endl;
+    }
+
+    Verbose( Verbose const&) = delete;
+    Verbose & operator=( Verbose const&) = delete;
+
+private:
+    std::string     desc;
+    std::string     stop;
+};
+#endif
+
 std::map<task_id, STaskStatus::status>  taskStatusMap;
 std::map<task_id, PriorityProps*>       taskPropsMap;
 
 template< typename Fn >
 boost::fibers::fiber launch(Fn && func, std::string const& name, ChannelTask tsk) {
-    boost::fibers::fiber fiber( func);
+    boost::fibers::fiber fiber(func);
     PriorityProps & props(fiber.properties< PriorityProps >() );
     props.name = name;
     props.set_priority(tsk.priority);// Running
@@ -19,9 +41,16 @@ boost::fibers::fiber launch(Fn && func, std::string const& name, ChannelTask tsk
     return fiber;
 }
 
-void yield_fn() {
-    std::string name( boost::this_fiber::properties< PriorityProps >().name);
-    while(true) {
+void yield_fn()
+{
+    PriorityProps & props = boost::this_fiber::properties< PriorityProps >();
+    std::string name(props.name);
+#ifdef _VERBOSE
+    // This Verbose obj will call the dtor when leaving the function
+    // and it will leave a trace
+    Verbose v("---> yield_fn I'm outta here", "stop\n");
+#endif
+    while(!props.is_set_to_stop()) {
         //std::cout << "fiber " << name << " yielding" << std::endl;
         boost::this_fiber::yield();
     }
@@ -57,6 +86,14 @@ void Processor::init()
 void Processor::quit()
 {
     // TODO: Wait for running fibers with join
+    auto it = taskPropsMap.begin();
+    const auto itEnd = taskPropsMap.end();
+    while( it != itEnd )
+    {
+        it->second->set_priority(1);
+        it->second->set_to_stop();
+        ++it;
+    }
 
     // signal termination
     m_taskPool->close();
@@ -116,13 +153,13 @@ task_id Processor::resumeTask(const task_id& id)
 
 task_id Processor::stopTask(const task_id& id)
 {
-	 auto search = taskPropsMap.find(id);
+	auto search = taskPropsMap.find(id);
     if(search != taskPropsMap.end())
     {
         if(taskStatusMap[id] == STaskStatus::status::paused || taskStatusMap[id] ==  STaskStatus::status::running)
         {
-            std::cout << "Resume [" << search->first << "]" << std::endl;
-            search->second->set_priority(10);
+            std::cout << "Stop [" << search->first << "]" << std::endl;
+            search->second->set_to_stop();
             taskStatusMap[id] = STaskStatus::status::running;
 
             return id;
