@@ -35,7 +35,6 @@ boost::fibers::fiber launch(Fn && func, std::string const& name, ChannelTask tsk
     props.name = name;
     props.set_priority(tsk.priority);// Running
 
-    taskStatusMap[tsk.id] = task_status::running;
     taskPropsMap[tsk.id] = &props;
 
     return fiber;
@@ -106,6 +105,7 @@ void Processor::quit()
 task_id Processor::startTask()
 {
     const ChannelTask ct(m_taskCounter, 5);
+    taskStatusMap[m_taskCounter] = task_status::running;
     m_taskPool->push(ct);
 	return m_taskCounter++;
 }
@@ -113,6 +113,7 @@ task_id Processor::startTask()
 task_id Processor::startTask(const task_type& type)
 {
     const ChannelTask ct(m_taskCounter, 5);
+    taskStatusMap[m_taskCounter] = task_status::running;
     m_taskPool->push(ct);
 	return m_taskCounter++;
 }
