@@ -19,5 +19,5 @@ make install
 
 ## Build Command line program
 ```
-g++ -o program src-cmd/program.cpp src-lib/asynctasklib.cpp src-lib/processor.cpp src-lib/priority_scheduler.cpp -I include/ -I src-lib/ -lboost_fiber -lboost_context -lpthread
+g++ -o program src-cmd/program.cpp -I include/ -lasynctasklib -lboost_fiber -lboost_context -lpthread
 ```

@@ -1,0 +1,11 @@
+prefix=..
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: asynctasklib
+Description: Asynchronous Task Library by edupaz2
+Version: 0.1
+URL: https://github.com/edupaz2/asynctasklib
+Requires: libboost-fiber1.65-dev > 1.65
+Libs: -lboost_fiber -lboost_context -lpthread
+Cflags: -I${prefix}/include -I ${prefix}src-lib/
