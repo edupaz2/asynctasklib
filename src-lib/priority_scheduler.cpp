@@ -68,39 +68,17 @@ void PriorityScheduler::awakened(boost::fibers::context* ctx, PriorityProps & pr
     int ctx_priority = props.get_priority(); /*< `props` is the instance of
                                                PriorityProps associated
                                                with the passed fiber `ctx`. >*/
-
-    // Fibers with priorities below zero are "paused". Do not include them in the ready queue
-    if(ctx_priority < 0)
-    {
-        // No need to insert in order
-        rqueue_t::iterator i( std::find_if( pqueue_.begin(), pqueue_.end(),
-            [ctx_priority,this]( boost::fibers::context & c)
-            { return properties( &c ).get_priority() < ctx_priority; }));
-        // Now, whether or not we found a fiber with lower priority,
-        // insert this new fiber here.
-        pqueue_.insert(i, *ctx);
-    }
-    else
-    {
-        // With this scheduler, fibers with higher priority values are
-        // preferred over fibers with lower priority values. But fibers with
-        // equal priority values are processed in round-robin fashion. So when
-        // we're handed a new context*, put it at the end of the fibers
-        // with that same priority. In other words: search for the first fiber
-        // in the queue with LOWER priority, and insert before that one.
-        rqueue_t::iterator i( std::find_if( rqueue_.begin(), rqueue_.end(),
+    rqueue_t::iterator i( std::find_if( rqueue_.begin(), rqueue_.end(),
             [ctx_priority,this]( boost::fibers::context & c)
             { return properties( &c ).get_priority() >= ctx_priority; }));
-        // Now, whether or not we found a fiber with lower priority,
-        // insert this new fiber here.
-        rqueue_.insert(i, *ctx);
-    }
+    // Now, whether or not we found a fiber with lower priority,
+    // insert this new fiber here.
+    rqueue_.insert(i, *ctx);
 #ifdef _VERBOSE
     std::cout << "awakened(" << props.name << "-" << ctx_priority << "-" << ctx->ready_is_linked() << "): ";
 #endif
 #ifdef _VERBOSE_QUEUES
     describe_ready_queue();
-    describe_paused_queue();
     std::cout << std::endl;
 #else
     std::cout << std::endl;
@@ -134,7 +112,6 @@ boost::fibers::context* PriorityScheduler::pick_next() noexcept
 #endif
 #ifdef _VERBOSE_QUEUES
     describe_ready_queue();
-    describe_paused_queue();
     std::cout << std::endl;
 #else
     std::cout << std::endl;
@@ -172,18 +149,19 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
         handle the case in which the passed `ctx` is not in
         your ready queue. It might be running, or it might be
         blocked. >*/
-
+        std::cout << "property_change 1111" << std::endl;
 
 #ifdef _VERBOSE_QUEUES
         // hopefully user will distinguish this case by noticing that
         // the fiber with which we were called does not appear in the
         // ready queue at all
         describe_ready_queue();
-        describe_paused_queue();
         std::cout << std::endl;
 #endif
         return;
     }
+
+    std::cout << "property_change 2222" << std::endl;
 
     // Found ctx: unlink it
     ctx->ready_unlink();
@@ -192,6 +170,8 @@ void PriorityScheduler::property_change(boost::fibers::context * ctx, PriorityPr
     // it. We happen to have a method that will (re-)add a context* to the
     // right place in the ready queue.
     awakened(ctx, props);
+
+    notify();
 }
 
 
@@ -214,24 +194,9 @@ void PriorityScheduler::describe_ready_queue()
     std::cout << "}";
 }
 
-void PriorityScheduler::describe_paused_queue()
-{
-    std::cout << "{Paused: ";
-    if ( pqueue_.empty() ) {
-        std::cout << "[empty]";
-    } else {
-        const char * delim = "";
-        for ( boost::fibers::context & ctx : pqueue_) {
-            PriorityProps & props( properties( & ctx) );
-            std::cout << delim << props.name << '(' << props.get_priority() << ')';
-            delim = ", ";
-        }
-    }
-    std::cout << "}";
-}
-
 void PriorityScheduler::suspend_until(std::chrono::steady_clock::time_point const& time_point) noexcept
 {
+    std::cout << "suspend_until BEGIN" << std::endl;
     if ( (std::chrono::steady_clock::time_point::max)() == time_point) {
         std::unique_lock< std::mutex > lk( mtx_);
         cnd_.wait( lk, [this](){ return flag_; });
@@ -241,6 +206,7 @@ void PriorityScheduler::suspend_until(std::chrono::steady_clock::time_point cons
         cnd_.wait_until( lk, time_point, [this](){ return flag_; });
         flag_ = false;
     }
+    std::cout << "suspend_until END" << std::endl;
 }
 
 void PriorityScheduler::notify() noexcept

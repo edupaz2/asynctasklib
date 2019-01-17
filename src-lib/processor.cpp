@@ -105,7 +105,7 @@ task_id Processor::resumeTask(const task_id& id)
         if(taskStatusMap[id] == STaskStatus::status::paused)
         {
             std::cout << "Resume [" << search->first << "]" << std::endl;
-            search->second->set_priority(10);
+            search->second->set_priority(5);
             taskStatusMap[id] = STaskStatus::status::running;
 
             return id;

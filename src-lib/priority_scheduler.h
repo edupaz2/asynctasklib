@@ -8,7 +8,6 @@
 #include <condition_variable>
 #include <mutex>
 #include <boost/fiber/all.hpp>
-#include <map>
 
 class PriorityProps : public boost::fibers::fiber_properties {
 public:
@@ -28,10 +27,8 @@ class PriorityScheduler :
     public boost::fibers::algo::algorithm_with_properties< PriorityProps > {
 private:
     typedef boost::fibers::scheduler::ready_queue_type  rqueue_t;
-    typedef std::map<boost::fibers::context*, int>      pmap_t;
 
     rqueue_t                    rqueue_;// Ready fibers
-    rqueue_t                    pqueue_;// Paused fibers
     std::mutex                  mtx_{};
     std::condition_variable     cnd_{};
     bool                        flag_{ false };
@@ -47,7 +44,6 @@ public:
     void notify() noexcept;
 
     void describe_ready_queue();
-    void describe_paused_queue();
 };
 
 #endif
